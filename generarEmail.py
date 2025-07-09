@@ -299,7 +299,7 @@ def send_email(archivos_pdf, client_email, client_name, log_pdf, moneda, codigo_
         print(f"Error adjuntando imagen: {e}")
         return
 
-    # Enviar el correo  
+    # Enviar el correo
     try:
         with smtplib.SMTP('smtp.office365.com', 587) as smtp:  # Usar SSL para seguridad
             smtp.ehlo()  # Saludar al servidor
