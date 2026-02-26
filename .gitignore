@@ -1,0 +1,8 @@
+.env
+GOOGLE-CREDENTIALS.json
+__pycache__/
+*.xlsx
+*.png
+*.jpg
+venv/
+env/
