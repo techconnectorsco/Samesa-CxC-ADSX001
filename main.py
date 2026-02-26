@@ -265,20 +265,24 @@ def medir_tiempo(func):
 def main() -> None:
     """ejecucion principal del codigo"""
     
+    # 1. Agregamos de nuevo la verificación para tu jefe
     if not verificar_estado_rpa():
         print("🚫 RPA desactivado administrativamente.")
-        return # Sale sin hacer nada
+        return
 
     print('Iniciando Automatización...')
-    
     df = obtener_datos_combinados()
-    # Ejecutamos la lógica y guardamos cuántos clientes se atendieron
     clientes_atendidos = generar_estado_de_cuenta_pdf_por_cliente_y_moneda(df)
 
-    # ACTUALIZAMOS EL DICCIONARIO GLOBAL DE UNA VEZ
-    # Si la función devolvió una lista o número, lo guardamos. Si devolvió False, ponemos 0.
-    status_global_ejecution["clientes_procesados"] = len(clientes_atendidos) if isinstance(clientes_atendidos, list) else 0
-
+    # --- AQUÍ ESTABA EL FALLO: REINCORPORAMOS LA ACTUALIZACIÓN ---
+    # Si tu función devuelve el número directamente, lo asignamos. 
+    # Si devuelve una lista, contamos sus elementos.
+    if isinstance(clientes_atendidos, (int, float)):
+        status_global_ejecution["clientes_procesados"] = int(clientes_atendidos)
+    elif isinstance(clientes_atendidos, list):
+        status_global_ejecution["clientes_procesados"] = len(clientes_atendidos)
+    
+    # Lista de correos
     recipient_emails = ["cxc@samesacr.com", "dramirez@samesacr.com", "devs@techconnectors.co"]
 
     if clientes_atendidos == False:
@@ -287,33 +291,27 @@ def main() -> None:
     else:
         for recipient_email in recipient_emails:
             send_log_by_email(recipient_email)
-    
-    # No necesitamos retornar nada especial, el decorador se encarga del tiempo
-    return 
 
 if __name__ == "__main__":
     try:
-        # result_time siempre será el tiempo (gracias al return duracion del decorador)
-        result_time = main() 
+        # El decorador mide el tiempo y lo devuelve a result_time
+        result_time = main()
+        print("✅ Proceso completado exitosamente.", result_time)
         
-        # 1. Terminamos de llenar el status global
         status_global_ejecution["tiempo_ejecucion"] = result_time
         
-        # 2. Definimos ruta del PDF
+        # --- NUEVA LÓGICA SUPABASE ---
         today = datetime.now().strftime('%d-%m-%y')
         current_directory = os.path.dirname(os.path.abspath(__file__))
         parent_directory = os.path.abspath(os.path.join(current_directory, ".."))
         log_path_real = os.path.join(parent_directory, f"Email_Logs_E.C._{today}", f"email_logs_{today}.pdf")
 
-        # 3. Reporte a Supabase
         finalizar_y_reportar(status_global_ejecution, log_path_real)
+        # -----------------------------
 
-        # 4. Registro en Google Sheets (Backup)
         hoy = datetime.today().weekday()
         if hoy < 5:
             registrar_ejecucion(status_global_ejecution)
-
+            
     except Exception as e:
-        status_global_ejecution["observaciones"] = f"ERROR: {str(e)}"
-        finalizar_y_reportar(status_global_ejecution)
-        print(f"❌ Error crítico: {e}")
+        print(f"❌ Error crítico en ejecución: {e}")
